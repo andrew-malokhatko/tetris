@@ -4,17 +4,15 @@ from collections import namedtuple
 import math
 import random
 from blocks import *
+
 pygame.init()
 
 timer = pygame.time.Clock()
 font = pygame.font.Font('freesansbold.ttf', 32)
 score = 0
 score_surf = font.render("Score: "+ str(score), True, (255,255,255), None)
-SCREENSIZE = (1600, 900)
 screen = pygame.display.set_mode(SCREENSIZE)
-position = namedtuple("Position", ["x", "y"])
-size = namedtuple("Size", ["width", "height"])
-BLOCKSIZE = 50
+size = namedtuple("Size", ["width", "height"]) # Size
 
 lines = []
 scr = 900
@@ -30,22 +28,22 @@ class Block(pygame.sprite.Sprite):
         self.color = color
         self.image = pygame.Surface(self.size)
         self.image.fill(self.color)
-        self.rect = self.image.get_rect(center=self.pos)
+        self.update()
 
     def update(self):
         self.rect = self.image.get_rect(center=self.pos)
 
-class Element():
-    def __init__(self, pattern,color):
+class Element:
+    def __init__(self, pattern, color):
         self.blocks = pygame.sprite.Group()
         main_block_coords = pattern[0]
         self.moving = True
-        self.main_block = Block(main_block_coords.x, main_block_coords.y, BLOCKSIZE, BLOCKSIZE, color)
+        self.main_block = Block(main_block_coords.x, main_block_coords.y, BLOCKSIZE, BLOCKSIZE, color)# same
         self.blocks.add(self.main_block)
-        for block_coords in pattern:
-            if block_coords == self.main_block.pos:
-                continue
-            block = Block(block_coords.x, block_coords.y, BLOCKSIZE, BLOCKSIZE, color)
+
+        for block_coords in pattern[1:]:
+            print(block_coords)
+            block = Block(block_coords.x, block_coords.y, BLOCKSIZE, BLOCKSIZE, color)# only one side
             self.blocks.add(block)
 
     def rotate(self):
@@ -54,20 +52,19 @@ class Element():
                 continue
             if self.on_one_axis(block):
                 if block.pos.x < self.main_block.pos.x:
-                    self.rotate_block(block, 0) ########
+                    self.rotate_block(block, 0) 
                 elif block.pos.x > self.main_block.pos.x:
                     self.rotate_block(block, 1)
                 elif block.pos.y < self.main_block.pos.y:
                     self.rotate_block(block, 2)
-                elif block.pos.y > self.main_block.pos.y:  ########
+                elif block.pos.y > self.main_block.pos.y: 
                     self.rotate_block(block, 3)
             else:
                 pass
 
     def on_one_axis(self, block):
-        if self.main_block.pos.x == block.pos.x or self.main_block.pos.y == block.pos.y:
-            return True
-        return False
+        return self.main_block.pos.x == block.pos.x \
+            or self.main_block.pos.y == block.pos.y
 
     def rotate_block(self, block, side):
         if self.moving:
@@ -85,19 +82,19 @@ class Element():
 
     def get_edge_blocks(self):
         max_x = 0
-        min_x = 0
+        min_x = 9999
         for block in self.blocks:
-            if max_x == 0 or block.pos.x > max_x:
-                max_x = block.pos.x
-            if min_x == 0 or block.pos.x < min_x:
-                min_x = block.pos.x
+            max_x = max(max_x, block.pos.x)
+            min_x = min(min_x, block.pos.x)
         return min_x, max_x
 
     def move(self):
-        if self.moving and t %2 != 0:
+        if self.moving:
             min_x, max_x = self.get_edge_blocks()
             pygame.draw.line(screen, (255,255,255), (min_x, self.main_block.pos.y + BLOCKSIZE/2),(min_x, 900), 10)
             pygame.draw.line(screen, (255,255,255), (max_x, self.main_block.pos.y + BLOCKSIZE/2),(max_x, 900), 10)
+
+        if self.moving and t % 2 != 0:
             def check_other(bloc):
                 for element in elements:
                     if element == self:
@@ -131,18 +128,18 @@ class Element():
                 return True
 
             if check_block(False, 400):
-                if keys[K_a]:
+                if keys[K_LEFT]:
                     for block in self.blocks:
                         block.pos = position(block.pos.x - BLOCKSIZE, block.pos.y)
 
             if check_block(True, 1200):
-                if keys[K_d]:
+                if keys[K_RIGHT]:
                     for block in self.blocks:
                         block.pos = position(block.pos.x + BLOCKSIZE, block.pos.y)
 
 def draw_borders():
-    pygame.draw.line(screen, (255,255,255), (350, 0), (350, SCREENSIZE[1]), 10)
-    pygame.draw.line(screen, (255,255,255), (1250, 0), (1250, SCREENSIZE[1]), 10)
+    pygame.draw.line(screen, (255,255,255), (325, 0), (325, SCREENSIZE[1]), 10)
+    pygame.draw.line(screen, (255,255,255), (1275, 0), (1275, SCREENSIZE[1]), 10)
 
 def check_new():
     for element in elements:
@@ -151,8 +148,7 @@ def check_new():
     return True
 
 def dima(): # 19
-    global score
-    global score_surf
+    global score, score_surf
     for line in lines:
         total = 0
         for element in elements:
@@ -169,11 +165,11 @@ def clear_the_area(line):
         for block in element.blocks:
             if block.pos.y == line:
                 element.blocks.remove(block)
-                block = None
                 continue
             if block.pos.y < line:
                 block.pos = position(block.pos.x, block.pos.y + BLOCKSIZE)
                 block.update()
+
 game_on = True
 t = 0
 elements = []
@@ -184,7 +180,7 @@ while game_on:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_on = False
-        if event.type == pygame.KEYDOWN:
+        elif event.type == pygame.KEYDOWN:
             for element in elements:
                 if event.key == pygame.K_r:
                     element.rotate()
@@ -197,7 +193,7 @@ while game_on:
 
     screen.fill((0,0,0))
     draw_borders()
-    screen.blit(score_surf, (1300, 50))
+    screen.blit(score_surf, (1350, 50))
     for element in elements:
         element.move()
         element.blocks.draw(screen)
