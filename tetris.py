@@ -15,18 +15,18 @@ screen = pygame.display.set_mode(SCREENSIZE)
 size = namedtuple("Size", ["width", "height"]) # Size
 
 lines = []
-scr = 900
-for i in range(17):
-    lines.append(scr)
-    scr -= BLOCKSIZE
+mutable_scr_size = SCREENSIZE[1]
+for i in range(int(SCREENSIZE[1]/BLOCKSIZE)):
+    lines.append(mutable_scr_size)
+    mutable_scr_size -= BLOCKSIZE
 
 class Block(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height, color):
+    def __init__(self, x, y, size, color):
         super().__init__()
         self.pos = position(x, y)
-        self.size = size(width, height)
+        self.size = size
         self.color = color
-        self.image = pygame.Surface(self.size)
+        self.image = pygame.Surface((self.size, self.size))
         self.image.fill(self.color)
         self.update()
 
@@ -38,47 +38,69 @@ class Element:
         self.blocks = pygame.sprite.Group()
         main_block_coords = pattern[0]
         self.moving = True
-        self.main_block = Block(main_block_coords.x, main_block_coords.y, BLOCKSIZE, BLOCKSIZE, color)# same
+        self.main_block = Block(main_block_coords.x, main_block_coords.y, BLOCKSIZE, color)# same
         self.blocks.add(self.main_block)
 
         for block_coords in pattern[1:]:
             print(block_coords)
-            block = Block(block_coords.x, block_coords.y, BLOCKSIZE, BLOCKSIZE, color)# only one side
+            block = Block(block_coords.x, block_coords.y, BLOCKSIZE, color)# only one side
             self.blocks.add(block)
 
     def rotate(self):
         for block in self.blocks:
-            if block.pos == self.main_block.pos:
-                continue
-            if self.on_one_axis(block):
-                if block.pos.x < self.main_block.pos.x:
-                    self.rotate_block(block, 0) 
-                elif block.pos.x > self.main_block.pos.x:
-                    self.rotate_block(block, 1)
-                elif block.pos.y < self.main_block.pos.y:
-                    self.rotate_block(block, 2)
-                elif block.pos.y > self.main_block.pos.y: 
-                    self.rotate_block(block, 3)
-            else:
-                pass
+            if self.moving:
+                if block.pos == self.main_block.pos:
+                    continue
+                if self.on_one_axis(block):
+                    if block.pos.x < self.main_block.pos.x:
+                        self.rotate_block(block, 0) 
+                    elif block.pos.x > self.main_block.pos.x:
+                        self.rotate_block(block, 1)
+                    elif block.pos.y < self.main_block.pos.y:
+                        self.rotate_block(block, 2)
+                    elif block.pos.y > self.main_block.pos.y: 
+                        self.rotate_block(block, 3)
+                else:
+                    if block.pos.x > self.main_block.pos.x and block.pos.y < self.main_block.pos.y:
+                        self.rotate_diagonal(block, 0)
+                    elif block.pos.x > self.main_block.pos.x and block.pos.y > self.main_block.pos.y:
+                        self.rotate_diagonal(block, 1)
+                    elif block.pos.x < self.main_block.pos.x and block.pos.y > self.main_block.pos.y:
+                        self.rotate_diagonal(block, 2)
+                    elif block.pos.x < self.main_block.pos.x and block.pos.y < self.main_block.pos.y:
+                        self.rotate_diagonal(block, 3)
 
     def on_one_axis(self, block):
         return self.main_block.pos.x == block.pos.x \
             or self.main_block.pos.y == block.pos.y
 
+    def rotate_diagonal(self, block, side):
+        d_x = abs(self.main_block.pos.x - block.pos.x)
+        d_y = abs(self.main_block.pos.y - block.pos.y)
+
+        match side:
+            case 0:
+                block.pos = position(block.pos.x, self.main_block.pos.y + d_y) # +
+            case 1:
+                block.pos = position(self.main_block.pos.x  - d_x, block.pos.y)# +
+            case 2:
+                block.pos = position(block.pos.x, self.main_block.pos.y - d_y)# +
+            case 3:
+                block.pos = position(self.main_block.pos.x  + d_x, block.pos.y)
+        self.blocks.update()
+
     def rotate_block(self, block, side):
-        if self.moving:
-            d = abs(block.pos.x - self.main_block.pos.x) if block.pos.x - self.main_block.pos.x != 0 else abs(block.pos.y - self.main_block.pos.y)
-            match side:
-                case 0:
-                    block.pos = position(self.main_block.pos.x, self.main_block.pos.y - d)
-                case 1:
-                    block.pos = position(self.main_block.pos.x, self.main_block.pos.y + d)
-                case 2:
-                    block.pos = position(self.main_block.pos.x + d, self.main_block.pos.y)
-                case 3:
-                    block.pos = position(self.main_block.pos.x - d, self.main_block.pos.y)
-            self.blocks.update()
+        d = abs(block.pos.x - self.main_block.pos.x) if block.pos.x - self.main_block.pos.x != 0 else abs(block.pos.y - self.main_block.pos.y)
+        match side:
+            case 0:
+                block.pos = position(self.main_block.pos.x, self.main_block.pos.y - d)
+            case 1:
+                block.pos = position(self.main_block.pos.x, self.main_block.pos.y + d)
+            case 2:
+                block.pos = position(self.main_block.pos.x + d, self.main_block.pos.y)
+            case 3:
+                block.pos = position(self.main_block.pos.x - d, self.main_block.pos.y)
+        self.blocks.update()
 
     def get_edge_blocks(self):
         max_x = 0
@@ -89,12 +111,7 @@ class Element:
         return min_x, max_x
 
     def move(self):
-        if self.moving:
-            min_x, max_x = self.get_edge_blocks()
-            pygame.draw.line(screen, (255,255,255), (min_x, self.main_block.pos.y + BLOCKSIZE/2),(min_x, 900), 10)
-            pygame.draw.line(screen, (255,255,255), (max_x, self.main_block.pos.y + BLOCKSIZE/2),(max_x, 900), 10)
-
-        if self.moving and t % 2 != 0:
+        if self.moving and t % 10 == 0:
             def check_other(bloc):
                 for element in elements:
                     if element == self:
@@ -111,11 +128,16 @@ class Element:
                 if check_other(block):
                     self.moving = False
             self.blocks.update()
+            
+
+        if self.moving:
+            min_x, max_x = self.get_edge_blocks()
+            pygame.draw.line(screen, (255,255,255), (min_x, self.main_block.pos.y + BLOCKSIZE/2),(min_x, 900), 10)
+            pygame.draw.line(screen, (255,255,255), (max_x, self.main_block.pos.y + BLOCKSIZE/2),(max_x, 900), 10)
 
     def move_idk(self):
         if self.moving:
             keys = pygame.key.get_pressed()
-
             def check_block(more, number):
                 if more:
                     for block in self.blocks:
@@ -131,11 +153,13 @@ class Element:
                 if keys[K_LEFT]:
                     for block in self.blocks:
                         block.pos = position(block.pos.x - BLOCKSIZE, block.pos.y)
+                        self.blocks.update()
 
             if check_block(True, 1200):
                 if keys[K_RIGHT]:
                     for block in self.blocks:
                         block.pos = position(block.pos.x + BLOCKSIZE, block.pos.y)
+                        self.blocks.update()
 
 def draw_borders():
     pygame.draw.line(screen, (255,255,255), (325, 0), (325, SCREENSIZE[1]), 10)
@@ -198,6 +222,6 @@ while game_on:
         element.move()
         element.blocks.draw(screen)
     
-    timer.tick(10)
+    timer.tick(20)
     t += 1
     pygame.display.flip()
