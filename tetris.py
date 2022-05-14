@@ -47,10 +47,13 @@ class Element:
             self.blocks.add(block)
 
     def rotate(self):
+        poses = []
+        set = False
         for block in self.blocks:
             if self.moving:
                 if block.pos == self.main_block.pos:
                     continue
+                poses.append(block.pos)
                 if self.on_one_axis(block):
                     if block.pos.x < self.main_block.pos.x:
                         self.rotate_block(block, 0) 
@@ -70,6 +73,15 @@ class Element:
                     elif block.pos.x < self.main_block.pos.x and block.pos.y < self.main_block.pos.y:
                         self.rotate_diagonal(block, 3)
 
+                if self.rotate_col(block):
+                    set = True
+        if set:
+            for i, block in enumerate(self.blocks):
+                if i == 0: continue
+                pos = poses[i-1]
+                block.pos = pos
+                block.update()
+                
     def on_one_axis(self, block):
         return self.main_block.pos.x == block.pos.x \
             or self.main_block.pos.y == block.pos.y
@@ -101,6 +113,19 @@ class Element:
             case 3:
                 block.pos = position(self.main_block.pos.x - d, self.main_block.pos.y)
         self.blocks.update()
+
+    def rotate_col(self, block):
+        for element in elements:
+            if element == self:
+                continue
+            for bloc in element.blocks:
+                if block.pos.x == bloc.pos.x and block.pos.y == bloc.pos.y:
+                    return True
+        if block.pos.x < 400:
+            return True
+        if block.pos.x > 1200:
+            return True
+        return False
 
     def get_edge_blocks(self):
         max_x = 0
@@ -134,6 +159,17 @@ class Element:
             min_x, max_x = self.get_edge_blocks()
             pygame.draw.line(screen, (255,255,255), (min_x, self.main_block.pos.y + BLOCKSIZE/2),(min_x, 900), 10)
             pygame.draw.line(screen, (255,255,255), (max_x, self.main_block.pos.y + BLOCKSIZE/2),(max_x, 900), 10)
+    
+    def check_colllision(self, side):
+        for block in self.blocks:
+            for element in elements:
+                if element == self:
+                    continue
+                for bloc in element.blocks: # checking collision for every self.block 
+                    if block.pos.x + BLOCKSIZE*side == bloc.pos.x and block.pos.y == bloc.pos.y:
+                        print("returned fasle")
+                        return False
+        return True
 
     def move_idk(self):
         if self.moving:
@@ -149,17 +185,22 @@ class Element:
                             return False
                 return True
 
+            
+
+            def move_blocks(side):
+                 for block in self.blocks:
+                        block.pos = position(block.pos.x + BLOCKSIZE*side, block.pos.y)
+                        self.blocks.update()  # moving blocks
+
             if check_block(False, 400):
                 if keys[K_LEFT]:
-                    for block in self.blocks:
-                        block.pos = position(block.pos.x - BLOCKSIZE, block.pos.y)
-                        self.blocks.update()
+                    if self.check_colllision(-1):  # -1 is multiplier for BLOCKSIZE
+                        move_blocks(-1)
 
             if check_block(True, 1200):
                 if keys[K_RIGHT]:
-                    for block in self.blocks:
-                        block.pos = position(block.pos.x + BLOCKSIZE, block.pos.y)
-                        self.blocks.update()
+                    if self.check_colllision(1):
+                        move_blocks(1)
 
 def draw_borders():
     pygame.draw.line(screen, (255,255,255), (325, 0), (325, SCREENSIZE[1]), 10)
