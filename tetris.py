@@ -22,6 +22,23 @@ for i in range(int(SCREENSIZE[1]/BLOCKSIZE)):
     lines.append(mutable_scr_size)
     mutable_scr_size -= BLOCKSIZE
 
+class Button(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height, color, func):
+        super().__init__()
+        self.pos = position(x, y)
+        self.size = size(width, height)
+        self.color = color
+        self.func = func
+        self.image = pygame.Surface(self.size)
+        self.image.fill(self.color)
+        self.rect = self.image.get_rect(topleft = self.pos)
+
+    def check_pressed(self):
+        x, y = pygame.mouse.get_pos()
+        if x > self.pos.x and x < self.pos.x + self.size.width:
+            if y > self.pos.y and y < self.pos.x + self.size.height:
+                self.func()
+
 class Block(pygame.sprite.Sprite):
     def __init__(self, x, y, size, color):
         super().__init__()
@@ -244,8 +261,19 @@ def clear_the_area(line):
                 block.pos = position(block.pos.x, block.pos.y + BLOCKSIZE)
                 block.update()
 
+def restart():
+    global score, score_surf
+    elements.clear()
+    element = Element(blocks_pattern[random.randint(0, len(blocks_pattern)-1)], (255,255,255))
+    elements.append(element)
+    score = 0
+    score_surf = font.render("Score: "+str(score), True, (255,255,255), None)
+
 game_on = True
 t = 0
+restart_btn = Button(1400, 100, 100, 100, (255, 100, 200), restart)
+btns = pygame.sprite.Group()
+btns.add(restart_btn)
 elements = []
 element = Element(blocks_pattern[random.randint(0, len(blocks_pattern)-1)], (255,255,255))
 elements.append(element)
@@ -259,6 +287,8 @@ while game_on:
                 if event.key == pygame.K_r:
                     element.rotate()
                 element.move_idk()
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            restart_btn.check_pressed()
 
     if check_new():
         element1 = Element(blocks_pattern[random.randint(0, len(blocks_pattern)-1)], (random.randint(0,255),random.randint(0,255),random.randint(0,255)))
@@ -267,6 +297,7 @@ while game_on:
 
     screen.fill((0,0,0))
     draw_borders()
+    btns.draw(screen)
     screen.blit(score_surf, (1350, 50))
     for element in elements:
         element.move()
