@@ -1,3 +1,4 @@
+from turtle import speed
 import pygame
 from pygame.locals import *
 from collections import namedtuple
@@ -13,6 +14,7 @@ score = 0
 score_surf = font.render("Score: "+ str(score), True, (255,255,255), None)
 screen = pygame.display.set_mode(SCREENSIZE)
 size = namedtuple("Size", ["width", "height"]) # Size
+game_speed = 10
 
 lines = []
 mutable_scr_size = SCREENSIZE[1]
@@ -42,7 +44,6 @@ class Element:
         self.blocks.add(self.main_block)
 
         for block_coords in pattern[1:]:
-            print(block_coords)
             block = Block(block_coords.x, block_coords.y, BLOCKSIZE, color)# only one side
             self.blocks.add(block)
 
@@ -136,7 +137,7 @@ class Element:
         return min_x, max_x
 
     def move(self):
-        if self.moving and t % 10 == 0:
+        if self.moving and t % game_speed == 0:
             def check_other(bloc):
                 for element in elements:
                     if element == self:
@@ -160,14 +161,13 @@ class Element:
             pygame.draw.line(screen, (255,255,255), (min_x, self.main_block.pos.y + BLOCKSIZE/2),(min_x, 900), 10)
             pygame.draw.line(screen, (255,255,255), (max_x, self.main_block.pos.y + BLOCKSIZE/2),(max_x, 900), 10)
     
-    def check_colllision(self, side):
+    def check_colllision(self, side, side2):
         for block in self.blocks:
             for element in elements:
                 if element == self:
                     continue
                 for bloc in element.blocks: # checking collision for every self.block 
-                    if block.pos.x + BLOCKSIZE*side == bloc.pos.x and block.pos.y == bloc.pos.y:
-                        print("returned fasle")
+                    if block.pos.x + BLOCKSIZE*side == bloc.pos.x and block.pos.y + BLOCKSIZE*side2 == bloc.pos.y:
                         return False
         return True
 
@@ -185,22 +185,31 @@ class Element:
                             return False
                 return True
 
-            
+            def check_block_under():
+                for block in self.blocks:
+                    if block.pos.y + BLOCKSIZE*2 >= SCREENSIZE[1]:
+                        return False
+                return True
 
-            def move_blocks(side):
+            def move_blocks(side, side2):
                  for block in self.blocks:
-                        block.pos = position(block.pos.x + BLOCKSIZE*side, block.pos.y)
+                        block.pos = position(block.pos.x + BLOCKSIZE*side, block.pos.y + BLOCKSIZE*side2)
                         self.blocks.update()  # moving blocks
 
             if check_block(False, 400):
                 if keys[K_LEFT]:
-                    if self.check_colllision(-1):  # -1 is multiplier for BLOCKSIZE
-                        move_blocks(-1)
+                    if self.check_colllision(-1, 0):  # -1 is multiplier for BLOCKSIZE
+                        move_blocks(-1, 0)
 
             if check_block(True, 1200):
                 if keys[K_RIGHT]:
-                    if self.check_colllision(1):
-                        move_blocks(1)
+                    if self.check_colllision(1, 0):
+                        move_blocks(1, 0)
+
+                if keys[K_DOWN]:
+                    if self.check_colllision(0, 2):
+                        if check_block_under():
+                            move_blocks(0, 1)
 
 def draw_borders():
     pygame.draw.line(screen, (255,255,255), (325, 0), (325, SCREENSIZE[1]), 10)
